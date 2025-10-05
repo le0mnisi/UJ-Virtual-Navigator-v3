@@ -1,0 +1,150 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Gloria Sekwena" },
+      "geometry": { "type": "Point", "coordinates": [28.01823906384884, -26.18984792639419] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "School of Tourism and Hospitality" },
+      "geometry": { "type": "Point", "coordinates": [28.017863130010053, -26.189468821922002] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "UJ APB FADA" },
+      "geometry": { "type": "Point", "coordinates": [28.017480031552612, -26.188543541014976] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "UJ APB Student Center" },
+      "geometry": { "type": "Point", "coordinates": [28.016342989984075, -26.188448539883026] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "UJ Con Cowan Theatre" },
+      "geometry": { "type": "Point", "coordinates": [28.014878130998927, -26.188051568314368] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "UJ APB Gym" },
+      "geometry": { "type": "Point", "coordinates": [28.013912215763888, -26.18753083224871] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "UJ APB Biokinetics Clinic" },
+      "geometry": { "type": "Point", "coordinates": [28.01337357893316, -26.187587846725833] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "UJ APB Library" },
+      "geometry": { "type": "Point", "coordinates": [28.015274047655343, -26.18627565139178] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "UJ APB Study Center" },
+      "geometry": { "type": "Point", "coordinates": [28.015763749142618, -26.18728051767205] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Ndlovukazi Ladies Residence" },
+      "geometry": { "type": "Point", "coordinates": [28.015144176436653, -26.188908708674873] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Horizon Ladies Residence" },
+      "geometry": { "type": "Point", "coordinates": [28.014138975338348, -26.18867384639406] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Kilimanjaro Mens Residence" },
+      "geometry": { "type": "Point", "coordinates": [28.01359229811, -26.19056172896769] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "UJ FM 95.4" },
+      "geometry": { "type": "Point", "coordinates": [28.01632312992571, -26.18834772683962] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "UJ APB Protection Services" },
+      "geometry": { "type": "Point", "coordinates": [28.015943285919178, -26.18902168105297] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Block A" },
+      "geometry": { "type": "Point", "coordinates": [28.0148002808032, -26.18719467208832] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Block B" },
+      "geometry": { "type": "Point", "coordinates": [28.013255405513934, -26.18682328118091] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Block C" },
+      "geometry": { "type": "Point", "coordinates": [28.014356339955626, -26.186877460209754] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Block D" },
+      "geometry": { "type": "Point", "coordinates": [28.013860503015568, -26.186803340040377] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Block E" },
+      "geometry": { "type": "Point", "coordinates": [28.013212192089632, -26.18659073914245] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Block F" },
+      "geometry": { "type": "Point", "coordinates": [28.014509119322923, -26.186656671680023] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Block G" },
+      "geometry": { "type": "Point", "coordinates": [28.013192988464947, -26.18634993042927] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Block H" },
+      "geometry": { "type": "Point", "coordinates": [28.013980286276553, -26.186331503601863] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Block J" },
+      "geometry": { "type": "Point", "coordinates": [28.01356997322768, -26.186017660633087] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Sports Fields" },
+      "geometry": { "type": "Point", "coordinates": [28.011853963877186, -26.190081866971862] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Directors House" },
+      "geometry": { "type": "Point", "coordinates": [28.012556068043533, -26.186942967051685] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Student Support Services" },
+      "geometry": { "type": "Point", "coordinates": [28.016397866876535, -26.187683200395703] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Entrance 2" },
+      "geometry": { "type": "Point", "coordinates": [28.0123400054809, -26.187241205531905] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Ontdekking" },
+      "geometry": { "type": "Point", "coordinates": [28.015381663581547, -26.187399030649242] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Bus Station" },
+      "geometry": { "type": "Point", "coordinates": [28.01430758573417, -26.188145140693273] }
+    }
+  ]
+}

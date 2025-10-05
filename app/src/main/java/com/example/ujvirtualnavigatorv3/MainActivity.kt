@@ -7,30 +7,45 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
+import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
+import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.EdgeInsets
+import com.mapbox.maps.extension.compose.MapboxMap
+import com.mapbox.maps.extension.compose.MapEffect
+import com.mapbox.maps.extension.compose.annotation.generated.PointAnnotation
+import com.mapbox.maps.extension.compose.annotation.generated.PointAnnotation
+import com.mapbox.maps.extension.compose.annotation.rememberIconImage
+import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
 import com.mapbox.maps.plugin.PuckBearing
-import com.mapbox.maps.plugin.LocationPuck2D
 import com.mapbox.maps.plugin.locationcomponent.location
 import com.mapbox.maps.plugin.viewport.data.FollowPuckViewportStateBearing
 import com.mapbox.maps.plugin.viewport.data.FollowPuckViewportStateOptions
-import com.mapbox.maps.extension.compose.MapboxMap
-import com.mapbox.maps.extension.compose.MapEffect
-import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
+import com.mapbox.maps.plugin.LocationPuck2D
+import java.io.BufferedReader
+import java.io.InputStreamReader
 
 class MainActivity : ComponentActivity(), PermissionsListener {
 
@@ -43,24 +58,44 @@ class MainActivity : ComponentActivity(), PermissionsListener {
         val iconRes: Int
     )
 
+    data class Place(
+        val name: String,
+        val description: String?,
+        val coordinates: Point
+    )
+
     private val mapStyles = listOf(
-        MapStyle("mapbox://styles/slick16/cmf9xecrz003201sdgschbnwy", Color(0xFF454052), "Dark", R.drawable.ic_style),
-        MapStyle("mapbox://styles/slick16/cmf9xhlb7002m01s39w451ckj", Color(0xFFD3D3D3), "Light", R.drawable.ic_style),
-        MapStyle("mapbox://styles/slick16/cmf9xz8kh002t01sddxebh40f", Color(0xFF00FF00), "Satellite", R.drawable.ic_style)
+        MapStyle(
+            "mapbox://styles/slick16/cmf9xecrz003201sdgschbnwy",
+            Color(0xFF454052),
+            "Dark",
+            R.drawable.ic_style
+        ),
+        MapStyle(
+            "mapbox://styles/slick16/cmf9xhlb7002m01s39w451ckj",
+            Color(0xFFD3D3D3),
+            "Light",
+            R.drawable.ic_style
+        ),
+        MapStyle(
+            "mapbox://styles/slick16/cmf9xz8kh002t01sddxebh40f",
+            Color(0xFF00FF00),
+            "Satellite",
+            R.drawable.ic_style
+        )
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Fullscreen immersive
+        // Immersive fullscreen
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.decorView.systemUiVisibility = (
-                android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
-                        or android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        or android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or
+                        android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                        android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                 )
 
-        // Permissions
         if (PermissionsManager.areLocationPermissionsGranted(this)) {
             setupMap()
         } else {
@@ -73,32 +108,39 @@ class MainActivity : ComponentActivity(), PermissionsListener {
         setContent {
             var menuOpen by remember { mutableStateOf(false) }
             var currentStyle by remember { mutableStateOf(mapStyles[0].styleUri) }
-
+            var searchQuery by remember { mutableStateOf("") }
+            var selectedPlace by remember { mutableStateOf<Place?>(null) } // For pop-up card
+            val context = LocalContext.current
             val mapViewportState = rememberMapViewportState {
                 setCameraOptions {
-                    zoom(16.0)
+                    zoom(14.0)
                     center(Point.fromLngLat(28.0805, -26.1462))
-                    pitch(0.0)
-                    bearing(0.0)
                 }
             }
 
+            // Load GeoJSON places
+            val places = remember {
+                loadPlacesFromGeoJson(context, "locations.geojson")
+            }
+
+            val filteredPlaces = if (searchQuery.isNotBlank()) {
+                places.filter { it.name.contains(searchQuery, ignoreCase = true) }
+            } else emptyList()
+
             Box(modifier = Modifier.fillMaxSize()) {
+
+                // --- Map ---
                 MapboxMap(
                     modifier = Modifier.fillMaxSize(),
                     mapViewportState = mapViewportState
                 ) {
                     MapEffect(currentStyle) { mapView ->
-                        // Enable location component with 2D puck
                         mapView.location.updateSettings {
                             locationPuck = LocationPuck2D()
                             enabled = true
                             puckBearing = PuckBearing.COURSE
-                            puckBearingEnabled = true
-                            pulsingEnabled = true
                         }
 
-                        // Follow user location immediately
                         mapViewportState.transitionToFollowPuckState(
                             FollowPuckViewportStateOptions.Builder()
                                 .bearing(FollowPuckViewportStateBearing.SyncWithLocationPuck)
@@ -106,8 +148,119 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                                 .build()
                         )
 
-                        // Load selected style
                         mapView.getMapboxMap().loadStyleUri(currentStyle)
+                    }
+
+                    // --- Selected place marker ---
+                    selectedPlace?.let { place ->
+                        val marker = rememberIconImage(
+                            key = "selected-marker",
+                            painter = painterResource(id = R.drawable.ic_marker)
+                        )
+                        PointAnnotation(point = place.coordinates) {
+                            iconImage = marker
+                        }
+                    }
+                }
+
+
+                // --- Search Bar & Results ---
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 40.dp)
+                        .align(Alignment.TopCenter)
+                ) {
+                    TextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Search places", color = Color.Gray) },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .background(Color.White.copy(alpha = 0.7f), shape = RoundedCornerShape(50)),
+                        textStyle = TextStyle(color = Color.Black, fontSize = 16.sp),
+                        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
+                        colors = TextFieldDefaults.colors(
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black,
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            cursorColor = Color.Black,
+                            focusedPlaceholderColor = Color.Gray,
+                            unfocusedPlaceholderColor = Color.Gray,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        )
+                    )
+
+                    if (filteredPlaces.isNotEmpty()) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f))
+                        ) {
+                            LazyColumn {
+                                items(filteredPlaces) { place ->
+                                    Text(
+                                        text = place.name,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                selectedPlace = place
+                                                searchQuery = ""
+                                            }
+                                            .padding(12.dp),
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 16.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // --- Pop-up card for selected place ---
+                selectedPlace?.let { place ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.4f))
+                            .clickable { selectedPlace = null },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth(0.85f)
+                                .wrapContentHeight(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(place.name, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = {
+                                        // Fly to the place
+                                        mapViewportState.flyTo(
+                                            CameraOptions.Builder()
+                                                .center(place.coordinates)
+                                                .zoom(16.0)
+                                                .build()
+                                        )
+                                        selectedPlace = null
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF007AFF))
+                                ) {
+                                    Text("Navigate")
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("Tap outside to close", fontSize = 12.sp, color = Color.Gray)
+                            }
+                        }
                     }
                 }
 
@@ -117,12 +270,11 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                         .padding(bottom = 32.dp, end = 16.dp)
                         .size(56.dp)
                         .align(Alignment.BottomEnd)
-                        .background(color = Color.DarkGray, shape = CircleShape)
+                        .background(color = Color.White.copy(alpha = 0.8f), shape = CircleShape)
                         .clickable {
                             mapViewportState.transitionToFollowPuckState(
                                 FollowPuckViewportStateOptions.Builder()
                                     .bearing(FollowPuckViewportStateBearing.SyncWithLocationPuck)
-                                    .padding(EdgeInsets(200.0, 0.0, 0.0, 0.0))
                                     .build()
                             )
                         },
@@ -131,59 +283,54 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_locator),
                         contentDescription = "Recenter",
-                        tint = Color.White,
+                        tint = Color.Black,
                         modifier = Modifier.size(24.dp)
                     )
                 }
 
-                // --- Change Style Button ---
+                // --- Style Switcher Button ---
                 Box(
                     modifier = Modifier
                         .padding(bottom = 100.dp, end = 16.dp)
                         .size(56.dp)
                         .align(Alignment.BottomEnd)
-                        .background(color = Color.DarkGray, shape = CircleShape)
+                        .background(color = Color.White.copy(alpha = 0.8f), shape = CircleShape)
                         .clickable { menuOpen = !menuOpen },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_map_style),
                         contentDescription = "Change Style",
-                        tint = Color.White,
+                        tint = Color.Black,
                         modifier = Modifier.size(28.dp)
                     )
                 }
 
-                // --- Style Option Menu ---
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    horizontalAlignment = Alignment.End,
-                    modifier = Modifier
-                        .padding(bottom = 168.dp, end = 16.dp) // stacked above main button
-                        .align(Alignment.BottomEnd)
-                ) {
-                    if (menuOpen) {
+                // --- Style Menu ---
+                if (menuOpen) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.End,
+                        modifier = Modifier
+                            .padding(bottom = 170.dp, end = 16.dp)
+                            .align(Alignment.BottomEnd)
+                    ) {
                         mapStyles.forEach { style ->
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .background(color = style.color, shape = CircleShape)
-                                        .clickable { currentStyle = style.styleUri },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        painter = painterResource(id = style.iconRes),
-                                        contentDescription = style.title,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                                Text(
-                                    text = style.title,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(style.color, CircleShape)
+                                    .clickable {
+                                        currentStyle = style.styleUri
+                                        menuOpen = false
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = style.iconRes),
+                                    contentDescription = style.title,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
@@ -193,14 +340,30 @@ class MainActivity : ComponentActivity(), PermissionsListener {
         }
     }
 
+    private fun loadPlacesFromGeoJson(context: android.content.Context, fileName: String): List<Place> {
+        val places = mutableListOf<Place>()
+        try {
+            val inputStream = context.assets.open(fileName)
+            val json = BufferedReader(InputStreamReader(inputStream)).use { it.readText() }
+            val featureCollection = FeatureCollection.fromJson(json)
+
+            featureCollection.features()?.forEach { feature ->
+                val name = feature.getStringProperty("name")
+                val description = feature.getStringProperty("description")
+                val point = feature.geometry() as? Point
+                if (point != null) {
+                    places.add(Place(name, description, point))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return places
+    }
+
     override fun onExplanationNeeded(permissionsToExplain: List<String>) {}
     override fun onPermissionResult(granted: Boolean) { if (granted) setupMap() }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
