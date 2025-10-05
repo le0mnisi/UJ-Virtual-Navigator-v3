@@ -2,8 +2,10 @@ package com.example.ujvirtualnavigatorv3
 
 import android.Manifest
 import android.os.Bundle
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,7 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,20 +37,42 @@ import com.mapbox.maps.EdgeInsets
 import com.mapbox.maps.extension.compose.MapboxMap
 import com.mapbox.maps.extension.compose.MapEffect
 import com.mapbox.maps.extension.compose.annotation.generated.PointAnnotation
-import com.mapbox.maps.extension.compose.annotation.generated.PointAnnotation
 import com.mapbox.maps.extension.compose.annotation.rememberIconImage
 import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
+import com.mapbox.maps.plugin.LocationPuck2D
 import com.mapbox.maps.plugin.PuckBearing
 import com.mapbox.maps.plugin.locationcomponent.location
 import com.mapbox.maps.plugin.viewport.data.FollowPuckViewportStateBearing
 import com.mapbox.maps.plugin.viewport.data.FollowPuckViewportStateOptions
-import com.mapbox.maps.plugin.LocationPuck2D
+import com.mapbox.navigation.base.extensions.applyDefaultNavigationOptions
+import com.mapbox.navigation.base.options.NavigationOptions
+import com.mapbox.navigation.core.MapboxNavigation
+import com.mapbox.navigation.core.MapboxNavigationProvider
+import com.mapbox.navigation.core.directions.session.RoutesObserver
+import com.mapbox.navigation.core.trip.session.LocationMatcherResult
+import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineApi
+import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineView
+import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineApiOptions
+import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineViewOptions
+import com.mapbox.navigation.ui.maps.route.line.model.RouteLineColorResources
+import com.mapbox.api.directions.v5.models.RouteOptions
+import com.mapbox.common.location.toCommonLocation
+import com.mapbox.navigation.base.route.NavigationRoute
+import com.mapbox.navigation.base.route.RouterFailure
+import com.mapbox.navigation.base.route.NavigationRouterCallback
+import com.mapbox.navigation.ui.maps.location.NavigationLocationProvider
 import java.io.BufferedReader
 import java.io.InputStreamReader
+
 
 class MainActivity : ComponentActivity(), PermissionsListener {
 
     private lateinit var permissionsManager: PermissionsManager
+
+    private var mapboxNavigation: MapboxNavigation? = null
+    private val navigationLocationProvider = NavigationLocationProvider()
+    private var routeLineApi: MapboxRouteLineApi? = null
+    private var routeLineView: MapboxRouteLineView? = null
 
     data class MapStyle(
         val styleUri: String,
@@ -85,23 +108,44 @@ class MainActivity : ComponentActivity(), PermissionsListener {
         )
     )
 
+    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Immersive fullscreen
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.decorView.systemUiVisibility = (
-                android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or
-                        android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                        android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                View.SYSTEM_UI_FLAG_FULLSCREEN or
+                        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                 )
 
+        // Request permissions or setup map
         if (PermissionsManager.areLocationPermissionsGranted(this)) {
-            setupMap()
+            setupNavigation()
         } else {
             permissionsManager = PermissionsManager(this)
             permissionsManager.requestLocationPermissions(this)
         }
+    }
+
+    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
+    private fun setupNavigation() {
+        val navOptions = NavigationOptions.Builder(this).build()
+        mapboxNavigation = MapboxNavigationProvider.create(navOptions)
+        mapboxNavigation?.startTripSession()
+
+        // Route line
+        routeLineApi = MapboxRouteLineApi(MapboxRouteLineApiOptions.Builder().build())
+        routeLineView = MapboxRouteLineView(MapboxRouteLineViewOptions.Builder(this)
+            .routeLineColorResources(RouteLineColorResources.Builder()
+                .routeDefaultColor(Color(0xFF007AFF).hashCode())
+                .routeLineTraveledColor(Color.Blue.hashCode())
+                .build())
+            .build()
+        )
+
+        setupMap()
     }
 
     private fun setupMap() {
@@ -109,7 +153,8 @@ class MainActivity : ComponentActivity(), PermissionsListener {
             var menuOpen by remember { mutableStateOf(false) }
             var currentStyle by remember { mutableStateOf(mapStyles[0].styleUri) }
             var searchQuery by remember { mutableStateOf("") }
-            var selectedPlace by remember { mutableStateOf<Place?>(null) } // For pop-up card
+            var selectedPlace by remember { mutableStateOf<Place?>(null) }
+
             val context = LocalContext.current
             val mapViewportState = rememberMapViewportState {
                 setCameraOptions {
@@ -118,11 +163,7 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                 }
             }
 
-            // Load GeoJSON places
-            val places = remember {
-                loadPlacesFromGeoJson(context, "locations.geojson")
-            }
-
+            val places = remember { loadPlacesFromGeoJson(context, "locations.geojson") }
             val filteredPlaces = if (searchQuery.isNotBlank()) {
                 places.filter { it.name.contains(searchQuery, ignoreCase = true) }
             } else emptyList()
@@ -135,36 +176,56 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                     mapViewportState = mapViewportState
                 ) {
                     MapEffect(currentStyle) { mapView ->
-                        mapView.location.updateSettings {
-                            locationPuck = LocationPuck2D()
+                        val locationPlugin = mapView.location
+
+                        // Enable location puck
+                        locationPlugin.updateSettings {
                             enabled = true
-                            puckBearing = PuckBearing.COURSE
+                            locationPuck = LocationPuck2D()
+                            puckBearing = PuckBearing.HEADING
                         }
 
+                        // Update NavigationLocationProvider
+                        locationPlugin.addOnIndicatorPositionChangedListener { point ->
+                            val location = android.location.Location("mapbox")
+                            location.latitude = point.latitude()
+                            location.longitude = point.longitude()
+                            navigationLocationProvider.changePosition(location.toCommonLocation())
+                        }
+
+                        // Follow puck
                         mapViewportState.transitionToFollowPuckState(
                             FollowPuckViewportStateOptions.Builder()
                                 .bearing(FollowPuckViewportStateBearing.SyncWithLocationPuck)
-                                .padding(EdgeInsets(200.0, 0.0, 0.0, 0.0))
                                 .build()
                         )
 
+                        // Load style
                         mapView.getMapboxMap().loadStyleUri(currentStyle)
+
+                        // Route line observer
+                        mapboxNavigation?.registerRoutesObserver(RoutesObserver { routes ->
+                            val api = routeLineApi ?: return@RoutesObserver
+                            val view = routeLineView ?: return@RoutesObserver
+                            api.setNavigationRoutes(routes.navigationRoutes) { drawData ->
+                                mapView.getMapboxMap().getStyle()?.let { style ->
+                                    view.renderRouteDrawData(style, drawData)
+                                }
+                            }
+                        })
                     }
 
-                    // --- Selected place marker ---
+                    // Selected place marker
                     selectedPlace?.let { place ->
                         val marker = rememberIconImage(
                             key = "selected-marker",
                             painter = painterResource(id = R.drawable.ic_marker)
                         )
-                        PointAnnotation(point = place.coordinates) {
-                            iconImage = marker
-                        }
+                        PointAnnotation(point = place.coordinates) { iconImage = marker }
                     }
                 }
 
-
-                // --- Search Bar & Results ---
+                // --- Search Bar ---
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -223,7 +284,7 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                     }
                 }
 
-                // --- Pop-up card for selected place ---
+                // --- Pop-up Card ---
                 selectedPlace?.let { place ->
                     Box(
                         modifier = Modifier
@@ -244,7 +305,7 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Button(
                                     onClick = {
-                                        // Fly to the place
+                                        requestRouteTo(place.coordinates)
                                         mapViewportState.flyTo(
                                             CameraOptions.Builder()
                                                 .center(place.coordinates)
@@ -288,7 +349,7 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                     )
                 }
 
-                // --- Style Switcher Button ---
+                // --- Style Switcher ---
                 Box(
                     modifier = Modifier
                         .padding(bottom = 100.dp, end = 16.dp)
@@ -306,7 +367,6 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                     )
                 }
 
-                // --- Style Menu ---
                 if (menuOpen) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -361,8 +421,49 @@ class MainActivity : ComponentActivity(), PermissionsListener {
         return places
     }
 
+    private fun requestRouteTo(destination: Point) {
+        val originLocation = navigationLocationProvider.lastLocation ?: return
+        val originPoint = Point.fromLngLat(originLocation.longitude, originLocation.latitude)
+
+        val routeOptions = RouteOptions.builder()
+            .applyDefaultNavigationOptions()
+            .coordinatesList(listOf(originPoint, destination))
+            .build()
+
+        mapboxNavigation?.requestRoutes(
+            routeOptions,
+            object : NavigationRouterCallback {
+                override fun onRoutesReady(
+                    routes: List<NavigationRoute>,
+                    routerOrigin: String
+                ) {
+                    if (routes.isNotEmpty()) {
+                        mapboxNavigation?.setNavigationRoutes(routes)
+                    }
+                }
+
+                override fun onFailure(
+                    reasons: List<RouterFailure>,
+                    routeOptions: RouteOptions
+                ) {
+                    // Handle failure (e.g., log error)
+                }
+
+                override fun onCanceled(
+                    routeOptions: RouteOptions,
+                    routerOrigin: String
+                ) {
+                    // Handle cancellation if needed
+                }
+            }
+        )
+    }
+
+
+
     override fun onExplanationNeeded(permissionsToExplain: List<String>) {}
-    override fun onPermissionResult(granted: Boolean) { if (granted) setupMap() }
+    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
+    override fun onPermissionResult(granted: Boolean) { if (granted) setupNavigation() }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
