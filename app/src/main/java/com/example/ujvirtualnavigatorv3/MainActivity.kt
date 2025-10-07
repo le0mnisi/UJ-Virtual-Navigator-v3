@@ -33,13 +33,11 @@ import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
-import com.mapbox.maps.EdgeInsets
 import com.mapbox.maps.extension.compose.MapboxMap
 import com.mapbox.maps.extension.compose.MapEffect
 import com.mapbox.maps.extension.compose.annotation.generated.PointAnnotation
 import com.mapbox.maps.extension.compose.annotation.rememberIconImage
 import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
-import com.mapbox.maps.plugin.LocationPuck2D
 import com.mapbox.maps.plugin.PuckBearing
 import com.mapbox.maps.plugin.locationcomponent.location
 import com.mapbox.maps.plugin.viewport.data.FollowPuckViewportStateBearing
@@ -49,7 +47,6 @@ import com.mapbox.navigation.base.options.NavigationOptions
 import com.mapbox.navigation.core.MapboxNavigation
 import com.mapbox.navigation.core.MapboxNavigationProvider
 import com.mapbox.navigation.core.directions.session.RoutesObserver
-import com.mapbox.navigation.core.trip.session.LocationMatcherResult
 import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineApi
 import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineView
 import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineApiOptions
@@ -57,13 +54,16 @@ import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineViewOptions
 import com.mapbox.navigation.ui.maps.route.line.model.RouteLineColorResources
 import com.mapbox.api.directions.v5.models.RouteOptions
 import com.mapbox.common.location.toCommonLocation
+import com.mapbox.maps.MapboxExperimental
+import com.mapbox.maps.plugin.LocationPuck2D
+import com.mapbox.maps.plugin.LocationPuck3D
 import com.mapbox.navigation.base.route.NavigationRoute
 import com.mapbox.navigation.base.route.RouterFailure
 import com.mapbox.navigation.base.route.NavigationRouterCallback
 import com.mapbox.navigation.ui.maps.location.NavigationLocationProvider
 import java.io.BufferedReader
 import java.io.InputStreamReader
-
+import com.mapbox.maps.ImageHolder
 
 class MainActivity : ComponentActivity(), PermissionsListener {
 
@@ -137,17 +137,21 @@ class MainActivity : ComponentActivity(), PermissionsListener {
 
         // Route line
         routeLineApi = MapboxRouteLineApi(MapboxRouteLineApiOptions.Builder().build())
-        routeLineView = MapboxRouteLineView(MapboxRouteLineViewOptions.Builder(this)
-            .routeLineColorResources(RouteLineColorResources.Builder()
-                .routeDefaultColor(Color(0xFF007AFF).hashCode())
-                .routeLineTraveledColor(Color.Blue.hashCode())
-                .build())
-            .build()
+        routeLineView = MapboxRouteLineView(
+            MapboxRouteLineViewOptions.Builder(this)
+                .routeLineColorResources(
+                    RouteLineColorResources.Builder()
+                        .routeDefaultColor(Color(0xFF007AFF).hashCode())
+                        .routeLineTraveledColor(Color.Blue.hashCode())
+                        .build()
+                )
+                .build()
         )
 
         setupMap()
     }
 
+    @OptIn(MapboxExperimental::class)
     private fun setupMap() {
         setContent {
             var menuOpen by remember { mutableStateOf(false) }
@@ -176,16 +180,25 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                     mapViewportState = mapViewportState
                 ) {
                     MapEffect(currentStyle) { mapView ->
-                        val locationPlugin = mapView.location
+                        mapView.getMapboxMap().loadStyleUri(currentStyle) { style ->
 
-                        // Enable location puck
-                        locationPlugin.updateSettings {
-                            enabled = true
-                            locationPuck = LocationPuck2D()
-                            puckBearing = PuckBearing.HEADING
-                        }
+                            // ✅ Style is fully loaded, now enable location
+                            val locationPlugin = mapView.location
+                            locationPlugin.updateSettings {
+                                enabled = true
+                                locationPuck = LocationPuck3D(
+                                    modelUri = "asset://student_avatar.glb", // put in /assets
+                                    modelScale = listOf(50.0f, 50.0f, 50.0f),
+                                    modelRotation = listOf(0f, 0f, 0f),
+                                    modelTranslation = listOf(0f, 0f, 0.5f),
+                                    modelOpacity = 1.0f
+                                )
+                                puckBearing = PuckBearing.HEADING
+                                puckBearingEnabled = true
+                            }
 
-                        // Update NavigationLocationProvider
+
+                            // Update NavigationLocationProvider
                         locationPlugin.addOnIndicatorPositionChangedListener { point ->
                             val location = android.location.Location("mapbox")
                             location.latitude = point.latitude()
@@ -200,7 +213,7 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                                 .build()
                         )
 
-                        // Load style
+                        // Load map style
                         mapView.getMapboxMap().loadStyleUri(currentStyle)
 
                         // Route line observer
@@ -213,7 +226,7 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                                 }
                             }
                         })
-                    }
+                    }}
 
                     // Selected place marker
                     selectedPlace?.let { place ->
@@ -446,20 +459,18 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                     reasons: List<RouterFailure>,
                     routeOptions: RouteOptions
                 ) {
-                    // Handle failure (e.g., log error)
+                    // Handle failure
                 }
 
                 override fun onCanceled(
                     routeOptions: RouteOptions,
                     routerOrigin: String
                 ) {
-                    // Handle cancellation if needed
+                    // Handle cancellation
                 }
             }
         )
     }
-
-
 
     override fun onExplanationNeeded(permissionsToExplain: List<String>) {}
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
