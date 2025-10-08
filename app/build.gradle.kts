@@ -71,6 +71,8 @@ dependencies {
     // --- Optional debug / preview ---
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+    implementation("io.coil-kt:coil-compose:2.6.0")
+
 
     // --- Kotlin + AndroidX ---
     implementation(libs.androidx.core.ktx)

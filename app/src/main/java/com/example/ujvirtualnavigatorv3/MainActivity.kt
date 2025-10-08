@@ -6,7 +6,9 @@ import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresPermission
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +20,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -28,13 +31,17 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
+import coil.compose.rememberAsyncImagePainter
 import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
+import com.mapbox.api.directions.v5.models.RouteOptions
+import com.mapbox.common.location.toCommonLocation
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
-import com.mapbox.maps.extension.compose.MapboxMap
+import com.mapbox.maps.MapboxExperimental
 import com.mapbox.maps.extension.compose.MapEffect
+import com.mapbox.maps.extension.compose.MapboxMap
 import com.mapbox.maps.extension.compose.annotation.generated.PointAnnotation
 import com.mapbox.maps.extension.compose.annotation.rememberIconImage
 import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
@@ -44,26 +51,21 @@ import com.mapbox.maps.plugin.viewport.data.FollowPuckViewportStateBearing
 import com.mapbox.maps.plugin.viewport.data.FollowPuckViewportStateOptions
 import com.mapbox.navigation.base.extensions.applyDefaultNavigationOptions
 import com.mapbox.navigation.base.options.NavigationOptions
+import com.mapbox.navigation.base.route.NavigationRoute
+import com.mapbox.navigation.base.route.RouterFailure
+import com.mapbox.navigation.base.route.NavigationRouterCallback
 import com.mapbox.navigation.core.MapboxNavigation
 import com.mapbox.navigation.core.MapboxNavigationProvider
 import com.mapbox.navigation.core.directions.session.RoutesObserver
+import com.mapbox.navigation.ui.maps.location.NavigationLocationProvider
 import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineApi
 import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineView
 import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineApiOptions
 import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineViewOptions
 import com.mapbox.navigation.ui.maps.route.line.model.RouteLineColorResources
-import com.mapbox.api.directions.v5.models.RouteOptions
-import com.mapbox.common.location.toCommonLocation
-import com.mapbox.maps.MapboxExperimental
-import com.mapbox.maps.plugin.LocationPuck2D
 import com.mapbox.maps.plugin.LocationPuck3D
-import com.mapbox.navigation.base.route.NavigationRoute
-import com.mapbox.navigation.base.route.RouterFailure
-import com.mapbox.navigation.base.route.NavigationRouterCallback
-import com.mapbox.navigation.ui.maps.location.NavigationLocationProvider
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import com.mapbox.maps.ImageHolder
 
 class MainActivity : ComponentActivity(), PermissionsListener {
 
@@ -79,6 +81,12 @@ class MainActivity : ComponentActivity(), PermissionsListener {
         val color: Color,
         val title: String,
         val iconRes: Int
+    )
+
+    data class AvatarOption(
+        val name: String,
+        val modelUri: String,  // LocationPuck3D uses asset://... for models
+        val iconUri: String    // Coil-friendly URI (file:///android_asset/...)
     )
 
     data class Place(
@@ -108,19 +116,43 @@ class MainActivity : ComponentActivity(), PermissionsListener {
         )
     )
 
+    // IMPORTANT: JPEGs must be placed into app/src/main/assets/
+    // Models (.glb) must be placed into app/src/main/assets/ as well.
+    private val avatars = listOf(
+        AvatarOption(
+            "Avatar 1",
+            "asset://student_avatar1.glb",
+            "file:///android_asset/student_avatar1.jpg"
+        ),
+        AvatarOption(
+            "Avatar 2",
+            "asset://student_avatar2.glb",
+            "file:///android_asset/student_avatar2.jpg"
+        ),
+        AvatarOption(
+            "Avatar 3",
+            "asset://student_avatar3.glb",
+            "file:///android_asset/student_avatar3.jpg"
+        ),
+        AvatarOption(
+            "Avatar 4",
+            "asset://student_avatar4.glb",
+            "file:///android_asset/student_avatar4.jpg"
+        )
+    )
+
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Immersive fullscreen
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        window.decorView.systemUiVisibility = (
-                View.SYSTEM_UI_FLAG_FULLSCREEN or
-                        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                )
+        window.decorView.systemUiVisibility =
+            (View.SYSTEM_UI_FLAG_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
 
-        // Request permissions or setup map
+        // Permissions
         if (PermissionsManager.areLocationPermissionsGranted(this)) {
             setupNavigation()
         } else {
@@ -135,7 +167,7 @@ class MainActivity : ComponentActivity(), PermissionsListener {
         mapboxNavigation = MapboxNavigationProvider.create(navOptions)
         mapboxNavigation?.startTripSession()
 
-        // Route line
+        // Route line setup
         routeLineApi = MapboxRouteLineApi(MapboxRouteLineApiOptions.Builder().build())
         routeLineView = MapboxRouteLineView(
             MapboxRouteLineViewOptions.Builder(this)
@@ -144,8 +176,7 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                         .routeDefaultColor(Color(0xFF007AFF).hashCode())
                         .routeLineTraveledColor(Color.Blue.hashCode())
                         .build()
-                )
-                .build()
+                ).build()
         )
 
         setupMap()
@@ -155,7 +186,9 @@ class MainActivity : ComponentActivity(), PermissionsListener {
     private fun setupMap() {
         setContent {
             var menuOpen by remember { mutableStateOf(false) }
+            var avatarMenuOpen by remember { mutableStateOf(false) }
             var currentStyle by remember { mutableStateOf(mapStyles[0].styleUri) }
+            var currentAvatar by remember { mutableStateOf(avatars[0]) }
             var searchQuery by remember { mutableStateOf("") }
             var selectedPlace by remember { mutableStateOf<Place?>(null) }
 
@@ -179,15 +212,16 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                     modifier = Modifier.fillMaxSize(),
                     mapViewportState = mapViewportState
                 ) {
-                    MapEffect(currentStyle) { mapView ->
-                        mapView.getMapboxMap().loadStyleUri(currentStyle) { style ->
+                    // use both style and avatar uri as key so MapEffect re-runs when avatar changes
+                    MapEffect(currentStyle + currentAvatar.modelUri) { mapView ->
+                        mapView.getMapboxMap().loadStyleUri(currentStyle) { _ ->
 
-                            // ✅ Style is fully loaded, now enable location
+                            // enable location and set 3D puck model from selected avatar
                             val locationPlugin = mapView.location
                             locationPlugin.updateSettings {
                                 enabled = true
                                 locationPuck = LocationPuck3D(
-                                    modelUri = "asset://student_avatar.glb", // put in /assets
+                                    modelUri = currentAvatar.modelUri,
                                     modelScale = listOf(50.0f, 50.0f, 50.0f),
                                     modelRotation = listOf(0f, 0f, 0f),
                                     modelTranslation = listOf(0f, 0f, 0.5f),
@@ -197,38 +231,35 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                                 puckBearingEnabled = true
                             }
 
-
-                            // Update NavigationLocationProvider
-                        locationPlugin.addOnIndicatorPositionChangedListener { point ->
-                            val location = android.location.Location("mapbox")
-                            location.latitude = point.latitude()
-                            location.longitude = point.longitude()
-                            navigationLocationProvider.changePosition(location.toCommonLocation())
-                        }
-
-                        // Follow puck
-                        mapViewportState.transitionToFollowPuckState(
-                            FollowPuckViewportStateOptions.Builder()
-                                .bearing(FollowPuckViewportStateBearing.SyncWithLocationPuck)
-                                .build()
-                        )
-
-                        // Load map style
-                        mapView.getMapboxMap().loadStyleUri(currentStyle)
-
-                        // Route line observer
-                        mapboxNavigation?.registerRoutesObserver(RoutesObserver { routes ->
-                            val api = routeLineApi ?: return@RoutesObserver
-                            val view = routeLineView ?: return@RoutesObserver
-                            api.setNavigationRoutes(routes.navigationRoutes) { drawData ->
-                                mapView.getMapboxMap().getStyle()?.let { style ->
-                                    view.renderRouteDrawData(style, drawData)
-                                }
+                            // keep navigation location provider updated
+                            locationPlugin.addOnIndicatorPositionChangedListener { point ->
+                                val location = android.location.Location("mapbox")
+                                location.latitude = point.latitude()
+                                location.longitude = point.longitude()
+                                navigationLocationProvider.changePosition(location.toCommonLocation())
                             }
-                        })
-                    }}
 
-                    // Selected place marker
+                            // follow puck
+                            mapViewportState.transitionToFollowPuckState(
+                                FollowPuckViewportStateOptions.Builder()
+                                    .bearing(FollowPuckViewportStateBearing.SyncWithLocationPuck)
+                                    .build()
+                            )
+
+                            // route line observer
+                            mapboxNavigation?.registerRoutesObserver(RoutesObserver { routes ->
+                                val api = routeLineApi ?: return@RoutesObserver
+                                val view = routeLineView ?: return@RoutesObserver
+                                api.setNavigationRoutes(routes.navigationRoutes) { drawData ->
+                                    mapView.getMapboxMap().getStyle()?.let { style ->
+                                        view.renderRouteDrawData(style, drawData)
+                                    }
+                                }
+                            })
+                        }
+                    }
+
+                    // selected place marker
                     selectedPlace?.let { place ->
                         val marker = rememberIconImage(
                             key = "selected-marker",
@@ -297,7 +328,7 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                     }
                 }
 
-                // --- Pop-up Card ---
+                // --- Pop-up Card for selected place ---
                 selectedPlace?.let { place ->
                     Box(
                         modifier = Modifier
@@ -362,7 +393,7 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                     )
                 }
 
-                // --- Style Switcher ---
+                // --- Style Switcher (bottom-right) ---
                 Box(
                     modifier = Modifier
                         .padding(bottom = 100.dp, end = 16.dp)
@@ -383,27 +414,96 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                 if (menuOpen) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        horizontalAlignment = Alignment.End,
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .padding(bottom = 170.dp, end = 16.dp)
                             .align(Alignment.BottomEnd)
                     ) {
                         mapStyles.forEach { style ->
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .background(style.color, CircleShape)
-                                    .clickable {
-                                        currentStyle = style.styleUri
-                                        menuOpen = false
-                                    },
-                                contentAlignment = Alignment.Center
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.clickable {
+                                    currentStyle = style.styleUri
+                                    menuOpen = false
+                                }
                             ) {
-                                Icon(
-                                    painter = painterResource(id = style.iconRes),
-                                    contentDescription = style.title,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .background(style.color, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = style.iconRes),
+                                        contentDescription = style.title,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Text(
+                                    text = style.title,
+                                    fontSize = 12.sp,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // --- Avatar Switcher (bottom-left) button ---
+                Box(
+                    modifier = Modifier
+                        .padding(bottom = 100.dp, start = 16.dp)
+                        .size(56.dp)
+                        .align(Alignment.BottomStart)
+                        .background(Color.White.copy(alpha = 0.8f), CircleShape)
+                        .clickable { avatarMenuOpen = !avatarMenuOpen },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_avatar),
+                        contentDescription = "Change Avatar",
+                        tint = Color.Black,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+
+                // --- Avatar Menu (circular images) ---
+                if (avatarMenuOpen) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .padding(bottom = 170.dp, start = 16.dp)
+                            .align(Alignment.BottomStart)
+                    ) {
+                        avatars.forEach { avatar ->
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.clickable {
+                                    currentAvatar = avatar
+                                    avatarMenuOpen = false
+                                }
+                            ) {
+                                // circular image with border that highlights the selected avatar
+                                Image(
+                                    painter = rememberAsyncImagePainter(avatar.iconUri),
+                                    contentDescription = avatar.name,
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(CircleShape)
+                                        .border(
+                                            width = if (currentAvatar == avatar) 3.dp else 1.dp,
+                                            color = if (currentAvatar == avatar) Color(0xFF007AFF) else Color.LightGray,
+                                            shape = CircleShape
+                                        )
+                                )
+                                Text(
+                                    text = avatar.name,
+                                    fontSize = 12.sp,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(top = 4.dp)
                                 )
                             }
                         }
@@ -446,27 +546,18 @@ class MainActivity : ComponentActivity(), PermissionsListener {
         mapboxNavigation?.requestRoutes(
             routeOptions,
             object : NavigationRouterCallback {
-                override fun onRoutesReady(
-                    routes: List<NavigationRoute>,
-                    routerOrigin: String
-                ) {
+                override fun onRoutesReady(routes: List<NavigationRoute>, routerOrigin: String) {
                     if (routes.isNotEmpty()) {
                         mapboxNavigation?.setNavigationRoutes(routes)
                     }
                 }
 
-                override fun onFailure(
-                    reasons: List<RouterFailure>,
-                    routeOptions: RouteOptions
-                ) {
-                    // Handle failure
+                override fun onFailure(reasons: List<RouterFailure>, routeOptions: RouteOptions) {
+                    // handle failure if required
                 }
 
-                override fun onCanceled(
-                    routeOptions: RouteOptions,
-                    routerOrigin: String
-                ) {
-                    // Handle cancellation
+                override fun onCanceled(routeOptions: RouteOptions, routerOrigin: String) {
+                    // handle cancellation if required
                 }
             }
         )
@@ -474,7 +565,10 @@ class MainActivity : ComponentActivity(), PermissionsListener {
 
     override fun onExplanationNeeded(permissionsToExplain: List<String>) {}
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
-    override fun onPermissionResult(granted: Boolean) { if (granted) setupNavigation() }
+    override fun onPermissionResult(granted: Boolean) {
+        if (granted) setupNavigation()
+    }
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
