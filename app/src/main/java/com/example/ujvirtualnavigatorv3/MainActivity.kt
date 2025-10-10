@@ -36,7 +36,6 @@ import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.api.directions.v5.models.RouteOptions
 import com.mapbox.common.location.toCommonLocation
-import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapboxExperimental
@@ -53,7 +52,6 @@ import com.mapbox.navigation.base.extensions.applyDefaultNavigationOptions
 import com.mapbox.navigation.base.options.NavigationOptions
 import com.mapbox.navigation.base.route.NavigationRoute
 import com.mapbox.navigation.base.route.RouterFailure
-import com.mapbox.navigation.base.route.NavigationRouterCallback
 import com.mapbox.navigation.core.MapboxNavigation
 import com.mapbox.navigation.core.MapboxNavigationProvider
 import com.mapbox.navigation.core.directions.session.RoutesObserver
@@ -94,9 +92,10 @@ class MainActivity : ComponentActivity(), PermissionsListener {
 
     data class Place(
         val name: String,
-        val description: String?,
+        val description: String? = null,
         val coordinates: Point,
-        val streetViewPoints: List<LatLng> = emptyList()
+        val streetViewPoints: List<LatLng> = emptyList(),
+        val keywords: List<String> = emptyList() // <-- added for keyword search
     )
 
     private val mapStyles = listOf(
@@ -199,12 +198,13 @@ class MainActivity : ComponentActivity(), PermissionsListener {
             }
 
             val places = remember { loadPlacesFromGeoJson(context, "locations.geojson") }
-            LaunchedEffect(Unit) {
-                println("Loaded places: ${places.size}")
-            }
 
             val filteredPlaces = if (searchQuery.isNotBlank()) {
-                places.filter { it.name.contains(searchQuery, ignoreCase = true) }
+                val query = searchQuery.lowercase()
+                places.filter { place ->
+                    place.name.contains(query, ignoreCase = true) ||
+                            place.keywords.any { it.contains(query) }
+                }
             } else emptyList()
 
             Box(modifier = Modifier.fillMaxSize()) {
@@ -351,7 +351,6 @@ class MainActivity : ComponentActivity(), PermissionsListener {
 
                                 Spacer(modifier = Modifier.height(12.dp))
 
-                                // --- STREET VIEW WITH BUTTONS ---
                                 val svPoints = if (place.streetViewPoints.isNotEmpty()) place.streetViewPoints else listOf(
                                     LatLng(place.coordinates.latitude(), place.coordinates.longitude())
                                 )
@@ -380,18 +379,14 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                                                     currentIndex = if (currentIndex > 0) currentIndex - 1 else svPoints.lastIndex
                                                 },
                                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF007AFF))
-                                            ) {
-                                                Text("Previous")
-                                            }
+                                            ) { Text("Previous") }
 
                                             Button(
                                                 onClick = {
                                                     currentIndex = if (currentIndex < svPoints.lastIndex) currentIndex + 1 else 0
                                                 },
                                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF007AFF))
-                                            ) {
-                                                Text("Next")
-                                            }
+                                            ) { Text("Next") }
                                         }
                                     }
                                 }
@@ -438,7 +433,7 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                     )
                 }
 
-                // --- Style Switcher (bottom-right) ---
+                // --- Style Switcher ---
                 Box(
                     modifier = Modifier
                         .padding(bottom = 100.dp, end = 16.dp)
@@ -496,7 +491,7 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                     }
                 }
 
-                // --- Avatar Switcher (bottom-left) ---
+                // --- Avatar Switcher ---
                 Box(
                     modifier = Modifier
                         .padding(bottom = 100.dp, start = 16.dp)
@@ -561,7 +556,6 @@ class MainActivity : ComponentActivity(), PermissionsListener {
         try {
             val inputStream = context.assets.open(fileName)
             val json = BufferedReader(InputStreamReader(inputStream)).use { it.readText() }
-
             val root = JSONObject(json)
             val features = root.optJSONArray("features")
             if (features != null) {
@@ -575,6 +569,9 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                         val lat = coordsArray.getDouble(1)
                         val name = properties?.optString("name") ?: "Unknown"
                         val description = properties?.optString("description", null)
+                        val keywords = properties?.optJSONArray("keywords")?.let { arr ->
+                            List(arr.length()) { arr.optString(it).lowercase() }
+                        } ?: emptyList()
                         val point = Point.fromLngLat(lng, lat)
 
                         val streetViewsList = mutableListOf<LatLng>()
@@ -592,28 +589,11 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                             }
                         }
 
-                        val place = if (streetViewsList.isNotEmpty()) {
-                            Place(name, description, point, streetViewsList)
-                        } else {
-                            Place(name, description, point, emptyList())
-                        }
-                        places.add(place)
-                    }
-                }
-            } else {
-                val featureCollection = FeatureCollection.fromJson(json)
-                featureCollection.features()?.forEach { feature ->
-                    val name = try { feature.getStringProperty("name") } catch (e: Exception) { "Unknown" }
-                    val description = try { feature.getStringProperty("description") } catch (e: Exception) { null }
-                    val point = feature.geometry() as? Point
-                    if (point != null) {
-                        places.add(Place(name, description, point, emptyList()))
+                        places.add(Place(name, description, point, streetViewsList, keywords))
                     }
                 }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        } catch (e: Exception) { e.printStackTrace() }
         return places
     }
 
@@ -628,13 +608,10 @@ class MainActivity : ComponentActivity(), PermissionsListener {
 
         mapboxNavigation?.requestRoutes(
             routeOptions,
-            object : NavigationRouterCallback {
+            object : com.mapbox.navigation.base.route.NavigationRouterCallback {
                 override fun onRoutesReady(routes: List<NavigationRoute>, routerOrigin: String) {
-                    if (routes.isNotEmpty()) {
-                        mapboxNavigation?.setNavigationRoutes(routes)
-                    }
+                    if (routes.isNotEmpty()) mapboxNavigation?.setNavigationRoutes(routes)
                 }
-
                 override fun onFailure(reasons: List<RouterFailure>, routeOptions: RouteOptions) {}
                 override fun onCanceled(routeOptions: RouteOptions, routerOrigin: String) {}
             }
@@ -660,20 +637,11 @@ fun StreetViewPanoramaComposable(position: LatLng, modifier: Modifier = Modifier
         factory = { context ->
             StreetViewPanoramaView(context).apply {
                 onCreate(Bundle())
-                getStreetViewPanoramaAsync { panorama ->
-                    panorama.setPosition(position)
-                }
+                getStreetViewPanoramaAsync { panorama -> panorama.setPosition(position) }
                 onResume()
             }
         },
-        update = { view ->
-            view.getStreetViewPanoramaAsync { panorama ->
-                panorama.setPosition(position)
-            }
-        },
-        onRelease = { view ->
-            try { view.onPause() } catch (_: Exception) {}
-            try { view.onDestroy() } catch (_: Exception) {}
-        }
+        update = { view -> view.getStreetViewPanoramaAsync { it.setPosition(position) } },
+        onRelease = { view -> try { view.onPause() } catch (_: Exception) {}; try { view.onDestroy() } catch (_: Exception) {} }
     )
 }
