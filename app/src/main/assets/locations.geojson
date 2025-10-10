@@ -79,7 +79,7 @@
       "properties": {
         "name": "UJ APB Biokinetics Clinic",
         "description": "Specialized facility providing exercise therapy and rehabilitation services improving health, preventing and recovering from injuries",
-        "streetviews": [{ "lat": -26.1873734, "lng": 28.0139472 }]
+        "streetviews": [{ "lat": 26.1875926, "lng": 28.013433 }]
       },
       "geometry": {
         "type": "Point",
@@ -175,7 +175,7 @@
       "properties": {
         "name": "Block A",
         "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
-        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+        "streetviews": [{ "lat": -26.1869568, "lng": 28.0149011}, { "lat": -26.1871334, "lng": 28.0144744}]
       },
       "geometry": {
         "type": "Point",
@@ -187,7 +187,7 @@
       "properties": {
         "name": "Block B",
         "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
-        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+        "streetviews": [{ "lat": -26.1871306, "lng": 28.0139156}]
       },
       "geometry": {
         "type": "Point",
@@ -199,7 +199,7 @@
       "properties": {
         "name": "Block C",
         "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
-        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+        "streetviews": [{ "lat": -26.1869639, "lng": 28.014428}]
       },
       "geometry": {
         "type": "Point",
@@ -211,7 +211,7 @@
       "properties": {
         "name": "Block D",
         "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
-        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+        "streetviews": [{ "lat": -26.186666, "lng": 28.0139932}]
       },
       "geometry": {
         "type": "Point",
@@ -223,7 +223,7 @@
       "properties": {
         "name": "Block E",
         "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
-        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+        "streetviews": [{ "lat": -26.1865668, "lng": 28.0133523}]
       },
       "geometry": {
         "type": "Point",
@@ -235,7 +235,7 @@
       "properties": {
         "name": "Block F",
         "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
-        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+        "streetviews": [{ "lat": -26.1868267, "lng": 28.0144627}, { "lat": -26.1865949, "lng": 28.014593}, { "lat": -26.1865195, "lng": 28.014593}]
       },
       "geometry": {
         "type": "Point",
@@ -247,7 +247,7 @@
       "properties": {
         "name": "Block G",
         "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
-        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+        "streetviews": [{ "lat": -26.1862902, "lng": 28.0133584}]
       },
       "geometry": {
         "type": "Point",
@@ -259,7 +259,7 @@
       "properties": {
         "name": "Block H",
         "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
-        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+        "streetviews": [{ "lat": -26.1863672, "lng": 28.0141165}]
       },
       "geometry": {
         "type": "Point",
@@ -271,7 +271,7 @@
       "properties": {
         "name": "Block J",
         "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
-        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+        "streetviews": [{ "lat": -26.1859905, "lng": 28.0142972}]
       },
       "geometry": {
         "type": "Point",
