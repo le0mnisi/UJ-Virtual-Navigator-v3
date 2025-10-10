@@ -64,13 +64,16 @@ import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineApiOptions
 import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineViewOptions
 import com.mapbox.navigation.ui.maps.route.line.model.RouteLineColorResources
 import com.mapbox.maps.plugin.LocationPuck3D
+import com.google.android.gms.maps.StreetViewPanoramaView
+import com.google.android.gms.maps.model.LatLng
+import androidx.compose.ui.viewinterop.AndroidView
+import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
 class MainActivity : ComponentActivity(), PermissionsListener {
 
     private lateinit var permissionsManager: PermissionsManager
-
     private var mapboxNavigation: MapboxNavigation? = null
     private val navigationLocationProvider = NavigationLocationProvider()
     private var routeLineApi: MapboxRouteLineApi? = null
@@ -85,14 +88,15 @@ class MainActivity : ComponentActivity(), PermissionsListener {
 
     data class AvatarOption(
         val name: String,
-        val modelUri: String,  // LocationPuck3D uses asset://... for models
-        val iconUri: String    // Coil-friendly URI (file:///android_asset/...)
+        val modelUri: String,
+        val iconUri: String
     )
 
     data class Place(
         val name: String,
         val description: String?,
-        val coordinates: Point
+        val coordinates: Point,
+        val streetViewPoints: List<LatLng> = emptyList()
     )
 
     private val mapStyles = listOf(
@@ -116,8 +120,6 @@ class MainActivity : ComponentActivity(), PermissionsListener {
         )
     )
 
-    // IMPORTANT: JPEGs must be placed into app/src/main/assets/
-    // Models (.glb) must be placed into app/src/main/assets/ as well.
     private val avatars = listOf(
         AvatarOption(
             "Avatar 1",
@@ -144,15 +146,12 @@ class MainActivity : ComponentActivity(), PermissionsListener {
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Immersive fullscreen
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.decorView.systemUiVisibility =
             (View.SYSTEM_UI_FLAG_FULLSCREEN or
                     View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
                     View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
 
-        // Permissions
         if (PermissionsManager.areLocationPermissionsGranted(this)) {
             setupNavigation()
         } else {
@@ -167,7 +166,6 @@ class MainActivity : ComponentActivity(), PermissionsListener {
         mapboxNavigation = MapboxNavigationProvider.create(navOptions)
         mapboxNavigation?.startTripSession()
 
-        // Route line setup
         routeLineApi = MapboxRouteLineApi(MapboxRouteLineApiOptions.Builder().build())
         routeLineView = MapboxRouteLineView(
             MapboxRouteLineViewOptions.Builder(this)
@@ -201,6 +199,10 @@ class MainActivity : ComponentActivity(), PermissionsListener {
             }
 
             val places = remember { loadPlacesFromGeoJson(context, "locations.geojson") }
+            LaunchedEffect(Unit) {
+                println("Loaded places: ${places.size}")
+            }
+
             val filteredPlaces = if (searchQuery.isNotBlank()) {
                 places.filter { it.name.contains(searchQuery, ignoreCase = true) }
             } else emptyList()
@@ -212,11 +214,9 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                     modifier = Modifier.fillMaxSize(),
                     mapViewportState = mapViewportState
                 ) {
-                    // use both style and avatar uri as key so MapEffect re-runs when avatar changes
                     MapEffect(currentStyle + currentAvatar.modelUri) { mapView ->
                         mapView.getMapboxMap().loadStyleUri(currentStyle) { _ ->
 
-                            // enable location and set 3D puck model from selected avatar
                             val locationPlugin = mapView.location
                             locationPlugin.updateSettings {
                                 enabled = true
@@ -231,7 +231,6 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                                 puckBearingEnabled = true
                             }
 
-                            // keep navigation location provider updated
                             locationPlugin.addOnIndicatorPositionChangedListener { point ->
                                 val location = android.location.Location("mapbox")
                                 location.latitude = point.latitude()
@@ -239,14 +238,12 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                                 navigationLocationProvider.changePosition(location.toCommonLocation())
                             }
 
-                            // follow puck
                             mapViewportState.transitionToFollowPuckState(
                                 FollowPuckViewportStateOptions.Builder()
                                     .bearing(FollowPuckViewportStateBearing.SyncWithLocationPuck)
                                     .build()
                             )
 
-                            // route line observer
                             mapboxNavigation?.registerRoutesObserver(RoutesObserver { routes ->
                                 val api = routeLineApi ?: return@RoutesObserver
                                 val view = routeLineView ?: return@RoutesObserver
@@ -259,7 +256,6 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                         }
                     }
 
-                    // selected place marker
                     selectedPlace?.let { place ->
                         val marker = rememberIconImage(
                             key = "selected-marker",
@@ -344,18 +340,67 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White)
                         ) {
-                            Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
                                 Text(place.name, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                                Spacer(modifier = Modifier.height(16.dp))
+                                place.description?.let {
+                                    Text(it, fontSize = 14.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp))
+                                }
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                // --- STREET VIEW WITH BUTTONS ---
+                                val svPoints = if (place.streetViewPoints.isNotEmpty()) place.streetViewPoints else listOf(
+                                    LatLng(place.coordinates.latitude(), place.coordinates.longitude())
+                                )
+                                var currentIndex by remember { mutableStateOf(0) }
+
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    StreetViewPanoramaComposable(
+                                        position = svPoints[currentIndex],
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(250.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                    )
+
+                                    if (svPoints.size > 1) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceEvenly
+                                        ) {
+                                            Button(
+                                                onClick = {
+                                                    currentIndex = if (currentIndex > 0) currentIndex - 1 else svPoints.lastIndex
+                                                },
+                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF007AFF))
+                                            ) {
+                                                Text("Previous")
+                                            }
+
+                                            Button(
+                                                onClick = {
+                                                    currentIndex = if (currentIndex < svPoints.lastIndex) currentIndex + 1 else 0
+                                                },
+                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF007AFF))
+                                            ) {
+                                                Text("Next")
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
                                 Button(
                                     onClick = {
                                         requestRouteTo(place.coordinates)
-                                        mapViewportState.flyTo(
-                                            CameraOptions.Builder()
-                                                .center(place.coordinates)
-                                                .zoom(16.0)
-                                                .build()
-                                        )
                                         selectedPlace = null
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF007AFF))
@@ -451,7 +496,7 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                     }
                 }
 
-                // --- Avatar Switcher (bottom-left) button ---
+                // --- Avatar Switcher (bottom-left) ---
                 Box(
                     modifier = Modifier
                         .padding(bottom = 100.dp, start = 16.dp)
@@ -469,7 +514,6 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                     )
                 }
 
-                // --- Avatar Menu (circular images) ---
                 if (avatarMenuOpen) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -486,7 +530,6 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                                     avatarMenuOpen = false
                                 }
                             ) {
-                                // circular image with border that highlights the selected avatar
                                 Image(
                                     painter = rememberAsyncImagePainter(avatar.iconUri),
                                     contentDescription = avatar.name,
@@ -518,14 +561,54 @@ class MainActivity : ComponentActivity(), PermissionsListener {
         try {
             val inputStream = context.assets.open(fileName)
             val json = BufferedReader(InputStreamReader(inputStream)).use { it.readText() }
-            val featureCollection = FeatureCollection.fromJson(json)
 
-            featureCollection.features()?.forEach { feature ->
-                val name = feature.getStringProperty("name")
-                val description = feature.getStringProperty("description")
-                val point = feature.geometry() as? Point
-                if (point != null) {
-                    places.add(Place(name, description, point))
+            val root = JSONObject(json)
+            val features = root.optJSONArray("features")
+            if (features != null) {
+                for (i in 0 until features.length()) {
+                    val feature = features.getJSONObject(i)
+                    val properties = feature.optJSONObject("properties")
+                    val geometry = feature.optJSONObject("geometry")
+                    val coordsArray = geometry?.optJSONArray("coordinates")
+                    if (coordsArray != null && coordsArray.length() >= 2) {
+                        val lng = coordsArray.getDouble(0)
+                        val lat = coordsArray.getDouble(1)
+                        val name = properties?.optString("name") ?: "Unknown"
+                        val description = properties?.optString("description", null)
+                        val point = Point.fromLngLat(lng, lat)
+
+                        val streetViewsList = mutableListOf<LatLng>()
+                        val svArr = properties?.optJSONArray("streetviews")
+                        if (svArr != null) {
+                            for (j in 0 until svArr.length()) {
+                                val svItem = svArr.optJSONObject(j)
+                                if (svItem != null) {
+                                    val svLat = svItem.optDouble("lat", Double.NaN)
+                                    val svLng = svItem.optDouble("lng", Double.NaN)
+                                    if (!svLat.isNaN() && !svLng.isNaN()) {
+                                        streetViewsList.add(LatLng(svLat, svLng))
+                                    }
+                                }
+                            }
+                        }
+
+                        val place = if (streetViewsList.isNotEmpty()) {
+                            Place(name, description, point, streetViewsList)
+                        } else {
+                            Place(name, description, point, emptyList())
+                        }
+                        places.add(place)
+                    }
+                }
+            } else {
+                val featureCollection = FeatureCollection.fromJson(json)
+                featureCollection.features()?.forEach { feature ->
+                    val name = try { feature.getStringProperty("name") } catch (e: Exception) { "Unknown" }
+                    val description = try { feature.getStringProperty("description") } catch (e: Exception) { null }
+                    val point = feature.geometry() as? Point
+                    if (point != null) {
+                        places.add(Place(name, description, point, emptyList()))
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -552,13 +635,8 @@ class MainActivity : ComponentActivity(), PermissionsListener {
                     }
                 }
 
-                override fun onFailure(reasons: List<RouterFailure>, routeOptions: RouteOptions) {
-                    // handle failure if required
-                }
-
-                override fun onCanceled(routeOptions: RouteOptions, routerOrigin: String) {
-                    // handle cancellation if required
-                }
+                override fun onFailure(reasons: List<RouterFailure>, routeOptions: RouteOptions) {}
+                override fun onCanceled(routeOptions: RouteOptions, routerOrigin: String) {}
             }
         )
     }
@@ -573,4 +651,29 @@ class MainActivity : ComponentActivity(), PermissionsListener {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
+}
+
+@Composable
+fun StreetViewPanoramaComposable(position: LatLng, modifier: Modifier = Modifier) {
+    AndroidView(
+        modifier = modifier,
+        factory = { context ->
+            StreetViewPanoramaView(context).apply {
+                onCreate(Bundle())
+                getStreetViewPanoramaAsync { panorama ->
+                    panorama.setPosition(position)
+                }
+                onResume()
+            }
+        },
+        update = { view ->
+            view.getStreetViewPanoramaAsync { panorama ->
+                panorama.setPosition(position)
+            }
+        },
+        onRelease = { view ->
+            try { view.onPause() } catch (_: Exception) {}
+            try { view.onDestroy() } catch (_: Exception) {}
+        }
+    )
 }

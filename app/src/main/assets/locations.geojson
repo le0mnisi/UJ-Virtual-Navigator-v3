@@ -3,148 +3,352 @@
   "features": [
     {
       "type": "Feature",
-      "properties": { "name": "Gloria Sekwena" },
-      "geometry": { "type": "Point", "coordinates": [28.01823906384884, -26.18984792639419] }
+      "properties": {
+        "name": "Gloria Sekwena",
+        "description": "Main entrance of UJ APB Campus providing access to the campus's central facilities and administrative buildings",
+        "streetviews": [{ "lat": -26.18983, "lng": 28.0181497 }]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.01823906384884, -26.18984792639419]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "School of Tourism and Hospitality" },
-      "geometry": { "type": "Point", "coordinates": [28.017863130010053, -26.189468821922002] }
+      "properties": {
+        "name": "School of Tourism and Hospitality",
+        "description": "Faculty dedicated to tourism and hospitality",
+        "streetviews": [{ "lat": -26.1897035, "lng": 28.0180564 }]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.017863130010053, -26.189468821922002]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "UJ APB FADA" },
-      "geometry": { "type": "Point", "coordinates": [28.017480031552612, -26.188543541014976] }
+      "properties": {
+        "name": "UJ APB FADA",
+        "description": "Faculty of Arts, Design and Architecture. Features studios, workshops amd classroom for creative studies",
+        "streetviews": [{ "lat": -26.1886787, "lng": 28.0176625 }]
+
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.017480031552612, -26.188543541014976]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "UJ APB Student Center" },
-      "geometry": { "type": "Point", "coordinates": [28.016342989984075, -26.188448539883026] }
+      "properties": {
+        "name": "UJ APB Student Center",
+        "description": "A hub for student life and social activities where you can find different shops to buy lunch",
+        "streetviews": [{ "lat": -26.1885914, "lng": 28.0162935 }]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.016342989984075, -26.188448539883026]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "UJ Con Cowan Theatre" },
-      "geometry": { "type": "Point", "coordinates": [28.014878130998927, -26.188051568314368] }
+      "properties": {
+        "name": "UJ Con Cowan Theatre",
+        "description": "The theatre is a 180-seat venue within the Con Cowan Building, which is part of the university's arts, culture, and events infrastructure.",
+        "streetviews": [{ "lat": -26.1881847, "lng": 28.0146649 }]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.014878130998927, -26.188051568314368]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "UJ APB Gym" },
-      "geometry": { "type": "Point", "coordinates": [28.013912215763888, -26.18753083224871] }
+      "properties": {
+        "name": "UJ APB Gym",
+        "description": "A fitness facility equipped with exercise machines, weights and spaces for workouts and wellness activities",
+        "streetviews": [{ "lat": -26.1873734, "lng": 28.0139472 }]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.013912215763888, -26.18753083224871]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "UJ APB Biokinetics Clinic" },
-      "geometry": { "type": "Point", "coordinates": [28.01337357893316, -26.187587846725833] }
+      "properties": {
+        "name": "UJ APB Biokinetics Clinic",
+        "description": "Specialized facility providing exercise therapy and rehabilitation services improving health, preventing and recovering from injuries",
+        "streetviews": [{ "lat": -26.1873734, "lng": 28.0139472 }]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.01337357893316, -26.187587846725833]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "UJ APB Library" },
-      "geometry": { "type": "Point", "coordinates": [28.015274047655343, -26.18627565139178] }
+      "properties": {
+        "name": "UJ APB Library",
+        "description": "Campus library offering a wide range of academic resources, study spaces and research suport for students and staff",
+        "streetviews": [{ "lat": -26.1866299, "lng": 28.0150796 }]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.015274047655343, -26.18627565139178]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "UJ APB Study Center" },
-      "geometry": { "type": "Point", "coordinates": [28.015763749142618, -26.18728051767205] }
+      "properties": {
+        "name": "UJ APB Study Center",
+        "description": "A space dedicated for students to study, collaborate and support for academic success",
+        "streetviews": [{ "lat": -26.1872122, "lng": 28.0155591 }]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.015763749142618, -26.18728051767205]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Ndlovukazi Ladies Residence" },
-      "geometry": { "type": "Point", "coordinates": [28.015144176436653, -26.188908708674873] }
+      "properties": {
+        "name": "Ndlovukazi Ladies Residence",
+        "description": "A student residence providing safe and comfortable accommodation exclusively for female students",
+        "streetviews": [{ "lat": -26.1887643, "lng": 28.0150808 }]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.015144176436653, -26.188908708674873]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Horizon Ladies Residence" },
-      "geometry": { "type": "Point", "coordinates": [28.014138975338348, -26.18867384639406] }
+      "properties": {
+        "name": "Horizon Ladies Residence",
+        "description": "A student residence providing safe and comfortable accommodation exclusively for female students",
+        "streetviews": [{ "lat": -26.1886502, "lng": 28.0141965 }]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.014138975338348, -26.18867384639406]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Kilimanjaro Mens Residence" },
-      "geometry": { "type": "Point", "coordinates": [28.01359229811, -26.19056172896769] }
+      "properties": {
+        "name": "Kilimanjaro Mens Residence",
+        "description": "A student residence providing safe and comfortable accommodation exclusively for male students",
+        "streetviews": [{ "lat": -26.1904357, "lng": 28.0137696 }]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.01359229811, -26.19056172896769]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "UJ FM 95.4" },
-      "geometry": { "type": "Point", "coordinates": [28.01632312992571, -26.18834772683962] }
+      "properties": {
+        "name": "UJ FM 95.4",
+        "description": "Campus radio broadcasting news, music and student led programmes to inform and entertain the community",
+        "streetviews": [{ "lat": -26.1885914, "lng": 28.0162935 }]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.01632312992571, -26.18834772683962]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "UJ APB Protection Services" },
-      "geometry": { "type": "Point", "coordinates": [28.015943285919178, -26.18902168105297] }
+      "properties": {
+        "name": "UJ APB Protection Services",
+        "description": "Campus security department ensuring the safety of students, staff and visitors",
+        "streetviews": [{ "lat": -26.1890125, "lng": 28.0161062 }]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.015943285919178, -26.18902168105297]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Block A" },
-      "geometry": { "type": "Point", "coordinates": [28.0148002808032, -26.18719467208832] }
+      "properties": {
+        "name": "Block A",
+        "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
+        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.0148002808032, -26.18719467208832]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Block B" },
-      "geometry": { "type": "Point", "coordinates": [28.013255405513934, -26.18682328118091] }
+      "properties": {
+        "name": "Block B",
+        "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
+        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.013255405513934, -26.18682328118091]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Block C" },
-      "geometry": { "type": "Point", "coordinates": [28.014356339955626, -26.186877460209754] }
+      "properties": {
+        "name": "Block C",
+        "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
+        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.014356339955626, -26.186877460209754]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Block D" },
-      "geometry": { "type": "Point", "coordinates": [28.013860503015568, -26.186803340040377] }
+      "properties": {
+        "name": "Block D",
+        "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
+        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.013860503015568, -26.186803340040377]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Block E" },
-      "geometry": { "type": "Point", "coordinates": [28.013212192089632, -26.18659073914245] }
+      "properties": {
+        "name": "Block E",
+        "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
+        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.013212192089632, -26.18659073914245]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Block F" },
-      "geometry": { "type": "Point", "coordinates": [28.014509119322923, -26.186656671680023] }
+      "properties": {
+        "name": "Block F",
+        "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
+        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.014509119322923, -26.186656671680023]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Block G" },
-      "geometry": { "type": "Point", "coordinates": [28.013192988464947, -26.18634993042927] }
+      "properties": {
+        "name": "Block G",
+        "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
+        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.013192988464947, -26.18634993042927]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Block H" },
-      "geometry": { "type": "Point", "coordinates": [28.013980286276553, -26.186331503601863] }
+      "properties": {
+        "name": "Block H",
+        "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
+        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.013980286276553, -26.186331503601863]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Block J" },
-      "geometry": { "type": "Point", "coordinates": [28.01356997322768, -26.186017660633087] }
+      "properties": {
+        "name": "Block J",
+        "description": "Buildings that house lecture halls offices, computer labs and other essential facilities",
+        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.01356997322768, -26.186017660633087]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Sports Fields" },
-      "geometry": { "type": "Point", "coordinates": [28.011853963877186, -26.190081866971862] }
+      "properties": {
+        "name": "Sports Fields",
+        "description": "Outdoor facilities for sports and recreational activities",
+        "streetviews": [{ "lat": -26.1906806, "lng": 28.0105433 }, { "lat": -26.19185, "lng": 28.009552 }]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.011853963877186, -26.190081866971862]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Directors House" },
-      "geometry": { "type": "Point", "coordinates": [28.012556068043533, -26.186942967051685] }
+      "properties": {
+        "name": "Directors House",
+        "description": "Directors House",
+        "streetviews": [{ "lat": -26.1873135, "lng": 28.0126536 }]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.012556068043533, -26.186942967051685]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Student Support Services" },
-      "geometry": { "type": "Point", "coordinates": [28.016397866876535, -26.187683200395703] }
+      "properties": {
+        "name": "Student Support Services",
+        "description": "Guidance, counseling and career development including clinic",
+        "streetviews": [{ "lat": -26.1878697, "lng": 28.0161657}]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.016397866876535, -26.187683200395703]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Entrance 2" },
-      "geometry": { "type": "Point", "coordinates": [28.0123400054809, -26.187241205531905] }
+      "properties": {
+        "name": "Entrance 2",
+        "description": "Entrance of UJ APB Campus providing access to the campus's central facilities and administrative buildings",
+        "streetviews": [{ "lat": -26.1871865, "lng": 28.0122905}]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.0123400054809, -26.187241205531905]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Ontdekking" },
-      "geometry": { "type": "Point", "coordinates": [28.015381663581547, -26.187399030649242] }
+      "properties": {
+        "name": "Ontdekking",
+        "description": "Buildings that house lecture halls and writing centers",
+        "streetviews": [{ "lat": -26.1872122, "lng": 28.0155591}, { "lat": -26.1874343, "lng": 28.0156395}, { "lat": -26.1876982, "lng": 28.015533}, { "lat": -26.1873497, "lng": 28.0151985}]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.015381663581547, -26.187399030649242]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "name": "Bus Station" },
-      "geometry": { "type": "Point", "coordinates": [28.01430758573417, -26.188145140693273] }
+      "properties": {
+        "name": "Bus Station",
+        "description": "Main transport hub providing access to other campuses",
+        "streetviews": [{ "lat": -26.1882951, "lng": 28.0144959}]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [28.01430758573417, -26.188145140693273]
+      }
     }
   ]
 }
